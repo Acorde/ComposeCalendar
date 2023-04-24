@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">AppointmentSchedule</string>
+
+    //Month of the year
+    <string name="January" translatable="false">ינואר</string>
+    <string name="February" translatable="false">פברואר</string>
+    <string name="March" translatable="false">מרץ</string>
+    <string name="April" translatable="false">אפריל</string>
+    <string name="May" translatable="false">מאי</string>
+    <string name="June" translatable="false">יוני</string>
+    <string name="July" translatable="false">יולי</string>
+    <string name="August" translatable="false">אוגוסט</string>
+    <string name="September" translatable="false">ספטמבר</string>
+    <string name="October" translatable="false">אוקטובר</string>
+    <string name="November" translatable="false">נובמבר</string>
+    <string name="December" translatable="false">דצמבר</string>
+</resources>
