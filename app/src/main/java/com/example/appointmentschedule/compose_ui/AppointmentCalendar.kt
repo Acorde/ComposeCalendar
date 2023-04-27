@@ -5,6 +5,7 @@ import android.content.Context
 import android.icu.util.HebrewCalendar
 import android.util.Log
 import android.util.SparseArray
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,9 +34,30 @@ import java.util.*
 
 @Composable
 fun ScheduleCalendarWrapper() {
-    val mCalendar = Calendar.getInstance()
-    val mSelectedMonth = remember { mutableStateOf(mCalendar.get(Calendar.MONTH) + 1) }
-    Log.d("IgorTest", "mSelectedMonth $mSelectedMonth")
+    val mCalendar = remember { mutableStateOf(Calendar.getInstance()) }
+    // mCalendar.value.set(Calendar.MONTH, 1)
+    val mSelectedMonth = remember { mutableStateOf(mCalendar.value.get(Calendar.MONTH)) }
+
+    LaunchedEffect(key1 = mSelectedMonth.value, block = {
+        Log.d(
+            "IgorTest",
+            "Selected month is ${mSelectedMonth.value} \n year is ${mCalendar.value.get(android.icu.util.Calendar.YEAR)}"
+        )
+
+        when (mSelectedMonth.value) {
+            12 -> {
+                val year = mCalendar.value.get(Calendar.YEAR)
+                mCalendar.value.set(Calendar.YEAR, year + 1)
+                mSelectedMonth.value = 0
+            }
+            -1 -> {
+                val year = mCalendar.value.get(Calendar.YEAR)
+                mCalendar.value.set(Calendar.YEAR, year -1)
+                mSelectedMonth.value = 11
+            }
+
+        }
+    })
 
     MaterialTheme {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -43,30 +65,32 @@ fun ScheduleCalendarWrapper() {
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ScheduleCalendarMontHeader(mSelectedMonth = mSelectedMonth)
+                ScheduleCalendarMontHeader(mSelectedMonth = mSelectedMonth, mCalendar = mCalendar)
                 Spacer(modifier = Modifier.padding(30.dp))
-                ScheduleCalendar(month = mSelectedMonth)
+                ScheduleCalendar(month = mSelectedMonth, mCalendar = mCalendar)
             }
         }
     }
 
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun ScheduleCalendar(month: MutableState<Int>) {
+fun ScheduleCalendar(month: MutableState<Int>, mCalendar: MutableState<Calendar>) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        val mCalendar = Calendar.getInstance()
-        mCalendar.set(Calendar.MONTH, month.value)
-        var monthDaysNumber = mCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        val mFirstDatOfMonth = getFirstDayOfWeek(month = month.value)
+        Log.d("IgorTest", "ScheduleCalendar month is : ${month.value}")
+        //mCalendar.value.set(Calendar.MONTH, month.value)
+        var monthDaysNumber = mCalendar.value.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+        val mFirstDatOfMonth = getFirstDateOfMonth(month = month.value, mCalendar.value.get(Calendar.YEAR))
 
         monthDaysNumber += (mFirstDatOfMonth - 1)
 
 
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 55.dp)
+            columns = GridCells.Adaptive(minSize = 50.dp), modifier = Modifier.fillMaxWidth()
         ) {
             items(HebrewDateLetters.values().size) { itemIndex ->
 
@@ -94,7 +118,7 @@ fun ScheduleCalendar(month: MutableState<Int>) {
                 } else {
                     ScheduleCalendarItem(
                         day = (day + 1) - (mFirstDatOfMonth - 1),
-                        dae = mCalendar,
+                        dae = mCalendar.value,
                         itemState = ScheduleCalendarItemState.ENABLE
                     )
                 }
@@ -106,18 +130,17 @@ fun ScheduleCalendar(month: MutableState<Int>) {
 }
 
 @Composable
-fun ScheduleCalendarMontHeader(mSelectedMonth: MutableState<Int>) {
+fun ScheduleCalendarMontHeader(mSelectedMonth: MutableState<Int>, mCalendar: MutableState<Calendar>) {
 
     val mContext = LocalContext.current
-    val mCalendar = Calendar.getInstance()
-    mCalendar.set(Calendar.MONTH, mSelectedMonth.value)
+    //mCalendar.value.set(Calendar.MONTH, mSelectedMonth.value)
 
     var mHebrewMonthName by remember {
         mutableStateOf(
             getMonthName(
                 context = mContext,
                 month = mSelectedMonth.value
-            ) + " ${mCalendar.get(Calendar.YEAR)}"
+            ) + " ${mCalendar.value.get(Calendar.YEAR)}"
         )
     }
 
@@ -125,7 +148,7 @@ fun ScheduleCalendarMontHeader(mSelectedMonth: MutableState<Int>) {
         mHebrewMonthName = getMonthName(
             context = mContext,
             month = mSelectedMonth.value
-        ) + " ${mCalendar.get(Calendar.YEAR)}"
+        ) + " ${mCalendar.value.get(Calendar.YEAR)}"
     })
 
     Row(
@@ -142,7 +165,7 @@ fun ScheduleCalendarMontHeader(mSelectedMonth: MutableState<Int>) {
                     mSelectedMonth.value += 1
                 }
         )
-        Text(text = mHebrewMonthName!!, modifier = Modifier.wrapContentWidth(), fontSize = 30.sp)
+        Text(text = mHebrewMonthName, modifier = Modifier.wrapContentWidth(), fontSize = 30.sp)
         Icon(
             imageVector = Icons.Outlined.KeyboardArrowRight,
             contentDescription = "",
@@ -266,7 +289,7 @@ fun main() {
     println("currentMonth is : $currentMonth")
     println("monthDaysNumber is : $monthDaysNumber")
     println("dayOfWeek is : $dayOfWeek")
-    println("firstDayOfWeek is : ${getFirstDayOfWeek(1)}")
+    println("firstDayOfWeek is : ${getFirstDateOfMonth(1, 2023)}")
 
 }
 
@@ -293,9 +316,11 @@ private fun getDayOfWeek(): Int {
 
 }
 
-private fun getFirstDayOfWeek(month: Int): Int {
+private fun getFirstDateOfMonth(month: Int, year : Int): Int {
     val mCalendar = Calendar.getInstance()
+    // mCalendar.set(Calendar.MONTH, if(month==0) 1 else month)
     mCalendar.set(Calendar.MONTH, month)
+    mCalendar.set(Calendar.YEAR, year)
     mCalendar.set(Calendar.DAY_OF_MONTH, 1)
     Log.d("IgorTest", "getFirstDayOfWeek is = ${mCalendar.get(Calendar.DAY_OF_WEEK)}")
     return mCalendar.get(Calendar.DAY_OF_WEEK)
